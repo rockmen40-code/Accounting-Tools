@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="記帳工具">
+<title>記帳小工具</title>
+<style>
+  :root {
+    --bg: #F7F5F0;
+    --surface: #FFFFFF;
+    --surface2: #F0EDE8;
+    --accent: #2D5A3D;
+    --accent2: #C47B2B;
+    --accent2-light: #FAF0E0;
+    --text: #1A1A1A;
+    --text2: #666660;
+    --text3: #999990;
+    --border: rgba(0,0,0,0.08);
+    --border2: rgba(0,0,0,0.14);
+    --danger: #B03A2E;
+    --danger-light: #FAEAE8;
+    --edit: #1A5276;
+    --edit-light: #D6EAF8;
+    --radius: 14px;
+    --radius-sm: 8px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.07);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: -apple-system, 'Helvetica Neue', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 40px;
+  }
+
+  .header {
+    background: var(--accent);
+    color: #fff;
+    padding: 52px 20px 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+  .header p { font-size: 13px; opacity: 0.7; margin-top: 2px; }
+
+  .tabs {
+    display: flex;
+    background: var(--accent);
+    padding: 0 20px 12px;
+    gap: 4px;
+  }
+  .tab {
+    flex: 1; text-align: center; padding: 8px 4px;
+    font-size: 13px; font-weight: 500;
+    color: rgba(255,255,255,0.6);
+    border-radius: var(--radius-sm);
+    cursor: pointer; transition: all 0.2s;
+    border: none; background: transparent;
+  }
+  .tab.active { background: rgba(255,255,255,0.18); color: #fff; }
+
+  .page { display: none; padding: 16px; }
+  .page.active { display: block; }
+
+  .card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+    box-shadow: var(--shadow);
+  }
+  .card-title {
+    font-size: 11px; font-weight: 600;
+    color: var(--text3); text-transform: uppercase;
+    letter-spacing: 0.08em; margin-bottom: 14px;
+  }
+
+  .form-row { display: grid; gap: 10px; margin-bottom: 10px; }
+  .col-2 { grid-template-columns: 1fr 1fr; }
+  .col-3 { grid-template-columns: 1fr 1fr 1fr; }
+
+  .field label { display: block; font-size: 12px; font-weight: 500; color: var(--text2); margin-bottom: 6px; }
+
+  .field input,
+  .field select,
+  .field textarea {
+    width: 100%; padding: 11px 12px; font-size: 16px;
+    font-family: inherit; background: var(--surface2);
+    border: 1px solid var(--border); border-radius: var(--radius-sm);
+    color: var(--text); outline: none;
+    -webkit-appearance: none; appearance: none;
+    transition: border-color 0.15s;
+  }
+  .field select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%23999' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 12px center; padding-right: 32px;
+  }
+  .field input:focus, .field select:focus, .field textarea:focus { border-color: var(--accent); background: var(--surface); }
+  .field textarea { resize: vertical; min-height: 70px; line-height: 1.5; }
+
+  .btn {
+    display: block; width: 100%; padding: 14px;
+    font-size: 16px; font-weight: 600; font-family: inherit;
+    border: none; border-radius: var(--radius-sm);
+    cursor: pointer; transition: all 0.15s; text-align: center;
+  }
+  .btn:active { transform: scale(0.97); opacity: 0.85; }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-outline { background: transparent; border: 1.5px solid var(--border2); color: var(--text); }
+  .btn-danger-outline { background: transparent; border: 1.5px solid var(--danger); color: var(--danger); }
+  .btn-export { background: var(--accent2-light); color: var(--accent2); border: 1.5px solid rgba(196,123,43,0.25); font-weight: 600; }
+  .btn-save { background: var(--edit); color: #fff; }
+
+  .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+  .stat { background: var(--surface); border-radius: var(--radius); padding: 14px; box-shadow: var(--shadow); }
+  .stat.full { grid-column: 1 / -1; background: var(--accent); }
+  .stat-label { font-size: 11px; color: var(--text3); font-weight: 500; margin-bottom: 4px; }
+  .stat.full .stat-label { color: rgba(255,255,255,0.65); }
+  .stat-val { font-size: 26px; font-weight: 700; color: var(--text); letter-spacing: -0.5px; }
+  .stat.full .stat-val { color: #fff; font-size: 32px; }
+
+  .meal-row { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .meal-stat { background: var(--surface); border-radius: var(--radius); padding: 12px; text-align: center; box-shadow: var(--shadow); }
+  .meal-stat .icon { font-size: 22px; margin-bottom: 4px; }
+  .meal-stat .meal-name { font-size: 11px; color: var(--text3); font-weight: 500; }
+  .meal-stat .meal-count { font-size: 22px; font-weight: 700; color: var(--text); }
+
+  .records-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .records-header span { font-size: 13px; color: var(--text3); }
+
+  .record-card {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 14px; margin-bottom: 8px;
+    box-shadow: var(--shadow);
+    border: 1.5px solid transparent;
+    transition: border-color 0.2s;
+  }
+  .record-card.editing { border-color: var(--edit); }
+
+  .record-main-row { display: flex; align-items: flex-start; gap: 12px; }
+  .record-left { flex: 1; min-width: 0; }
+  .record-top { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; flex-wrap: wrap; }
+  .record-date { font-size: 14px; font-weight: 600; }
+
+  .badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
+  .badge-早餐 { background: #FFF3CD; color: #856404; }
+  .badge-午餐 { background: #D4EDDA; color: #155724; }
+  .badge-晚餐 { background: #CCE5FF; color: #004085; }
+
+  .record-meta { font-size: 12px; color: var(--text3); }
+  .record-note { font-size: 12px; color: var(--text2); margin-top: 3px; font-style: italic; }
+  .record-amount { font-size: 17px; font-weight: 700; color: var(--text); white-space: nowrap; }
+
+  .action-btns { display: flex; gap: 6px; margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+  .action-btn {
+    flex: 1; padding: 8px; font-size: 13px; font-weight: 600;
+    font-family: inherit; border-radius: var(--radius-sm);
+    cursor: pointer; border: none; transition: all 0.15s; text-align: center;
+  }
+  .action-btn:active { transform: scale(0.97); opacity: 0.8; }
+  .action-btn-edit { background: var(--edit-light); color: var(--edit); }
+  .action-btn-del { background: var(--danger-light); color: var(--danger); }
+
+  .empty { text-align: center; padding: 40px 20px; color: var(--text3); font-size: 14px; }
+  .empty-icon { font-size: 40px; margin-bottom: 10px; }
+
+  /* 編輯提示條 */
+  .edit-banner {
+    display: none; background: var(--edit-light);
+    border: 1.5px solid rgba(26,82,118,0.2);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px; margin-bottom: 12px;
+    font-size: 13px; color: var(--edit); font-weight: 500;
+    align-items: center; gap: 8px;
+  }
+  .edit-banner.show { display: flex; }
+  .edit-banner-cancel { margin-left: auto; background: none; border: none; color: var(--edit); font-size: 20px; cursor: pointer; line-height: 1; padding: 0 2px; }
+
+  /* Modal */
+  .modal-bg {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.45); z-index: 999;
+    align-items: flex-end;
+  }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: var(--surface); border-radius: 20px 20px 0 0;
+    padding: 24px 20px;
+    padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    width: 100%;
+  }
+  .modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
+  .modal p { font-size: 14px; color: var(--text2); line-height: 1.6; margin-bottom: 20px; }
+  .modal-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* 餐別金額統計 */
+  .meal-breakdown-card {
+    background: var(--surface); border-radius: var(--radius);
+    box-shadow: var(--shadow); overflow: hidden; margin-bottom: 10px;
+  }
+  .mbd-header {
+    display: grid; grid-template-columns: 80px 1fr 1fr 1fr;
+    padding: 8px 12px; background: var(--surface2);
+    font-size: 11px; font-weight: 600; color: var(--text3);
+    text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .mbd-header span:not(:first-child) { text-align: right; }
+  .mbd-row {
+    display: grid; grid-template-columns: 80px 1fr 1fr 1fr;
+    padding: 10px 12px; border-top: 1px solid var(--border);
+    align-items: center;
+  }
+  .mbd-row:first-child { border-top: none; }
+  .mbd-month { font-size: 13px; font-weight: 600; color: var(--text2); }
+  .mbd-cell { text-align: right; font-size: 13px; color: var(--text); }
+  .mbd-cell.zero { color: var(--text3); }
+  .mbd-total-row {
+    display: grid; grid-template-columns: 80px 1fr 1fr 1fr;
+    padding: 10px 12px; border-top: 2px solid var(--border2);
+    background: var(--surface2); align-items: center;
+  }
+  .mbd-total-lbl { font-size: 12px; font-weight: 700; color: var(--text2); }
+  .mbd-total-cell { text-align: right; font-size: 13px; font-weight: 700; color: var(--accent); }
+
+  /* 月份統計 */
+  .month-section { margin-bottom: 10px; }
+  .month-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 14px; background: var(--surface);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    cursor: pointer; transition: background 0.15s;
+    border: 1.5px solid transparent;
+  }
+  .month-header:active { background: var(--surface2); }
+  .month-header.open { border-color: var(--accent); border-radius: var(--radius) var(--radius) 0 0; box-shadow: none; border-bottom: none; }
+  .month-left { display: flex; align-items: center; gap: 10px; }
+  .month-label { font-size: 15px; font-weight: 600; }
+  .month-count { font-size: 12px; color: var(--text3); }
+  .month-right { display: flex; align-items: center; gap: 10px; }
+  .month-total { font-size: 17px; font-weight: 700; color: var(--accent); }
+  .month-chevron { font-size: 12px; color: var(--text3); transition: transform 0.2s; }
+  .month-header.open .month-chevron { transform: rotate(180deg); }
+  .month-body {
+    display: none; background: var(--surface);
+    border: 1.5px solid var(--accent); border-top: none;
+    border-radius: 0 0 var(--radius) var(--radius);
+    overflow: hidden; margin-bottom: 0;
+  }
+  .month-body.open { display: block; }
+  .month-meal-row {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 0; border-bottom: 1px solid var(--border);
+  }
+  .month-meal-cell { padding: 10px; text-align: center; }
+  .month-meal-cell:not(:last-child) { border-right: 1px solid var(--border); }
+  .month-meal-icon { font-size: 14px; }
+  .month-meal-num { font-size: 16px; font-weight: 700; color: var(--text); }
+  .month-meal-lbl { font-size: 10px; color: var(--text3); margin-top: 1px; }
+  .month-bar-row { padding: 12px 14px; }
+  .month-bar-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text3); margin-bottom: 5px; }
+  .month-bar-track { background: var(--surface2); border-radius: 99px; height: 6px; overflow: hidden; }
+  .month-bar-fill { background: var(--accent); height: 100%; border-radius: 99px; transition: width 0.4s ease; }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1A1A1A; --surface: #242424; --surface2: #2C2C2C;
+      --text: #F0F0F0; --text2: #999; --text3: #666;
+      --border: rgba(255,255,255,0.08); --border2: rgba(255,255,255,0.15);
+      --shadow: 0 2px 12px rgba(0,0,0,0.3);
+      --edit-light: #0D2133; --danger-light: #2A1010;
+    }
+    .badge-早餐 { background: #3D2E00; color: #F5C842; }
+    .badge-午餐 { background: #0D2B16; color: #4ADE80; }
+    .badge-晚餐 { background: #0D1F35; color: #60A5FA; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>記帳小工具</h1>
+  <p>餐費記帳與統計</p>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('add')">新增</button>
+  <button class="tab" onclick="switchTab('stats')">統計</button>
+  <button class="tab" onclick="switchTab('records')">紀錄</button>
+</div>
+
+<!-- 新增／編輯頁 -->
+<div class="page active" id="page-add">
+  <div class="edit-banner" id="edit-banner">
+    ✏️ 編輯模式 — 修改完成後按「儲存修改」
+    <button class="edit-banner-cancel" onclick="cancelEdit()">✕</button>
+  </div>
+  <div class="card">
+    <div class="card-title" id="form-title">基本資訊</div>
+    <div class="form-row col-2">
+      <div class="field">
+        <label>日期</label>
+        <input type="date" id="inp-date">
+      </div>
+      <div class="field">
+        <label>餐別</label>
+        <select id="inp-meal">
+          <option value="早餐">☀️ 早餐</option>
+          <option value="午餐" selected>🌤 午餐</option>
+          <option value="晚餐">🌙 晚餐</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row col-3">
+      <div class="field">
+        <label>大人數</label>
+        <input type="number" id="inp-adults" min="0" value="1" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label>小孩數</label>
+        <input type="number" id="inp-kids" min="0" value="0" inputmode="numeric">
+      </div>
+      <div class="field">
+        <label>金額（元）</label>
+        <input type="number" id="inp-amount" min="0" placeholder="0" inputmode="decimal">
+      </div>
+    </div>
+    <div class="field" style="margin-bottom:14px;">
+      <label>備註（選填）</label>
+      <textarea id="inp-note" placeholder="例如：中山路店、請客、公司聚餐..."></textarea>
+    </div>
+    <button class="btn btn-primary" id="submit-btn" onclick="submitForm()">＋ 新增紀錄</button>
+  </div>
+</div>
+
+<!-- 統計頁 -->
+<div class="page" id="page-stats">
+  <div class="stats-grid">
+    <div class="stat full">
+      <div class="stat-label">總金額</div>
+      <div class="stat-val" id="stat-total">$0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">總筆數</div>
+      <div class="stat-val" id="stat-count">0</div>
+    </div>
+    <div class="stat">
+      <div class="stat-label">平均每筆</div>
+      <div class="stat-val" id="stat-avg">$0</div>
+    </div>
+  </div>
+  <div class="meal-row">
+    <div class="meal-stat"><div class="icon">☀️</div><div class="meal-count" id="stat-b">0</div><div class="meal-name">早餐</div></div>
+    <div class="meal-stat"><div class="icon">🌤</div><div class="meal-count" id="stat-l">0</div><div class="meal-name">午餐</div></div>
+    <div class="meal-stat"><div class="icon">🌙</div><div class="meal-count" id="stat-d">0</div><div class="meal-name">晚餐</div></div>
+  </div>
+  <div class="card-title" style="margin-top:4px;">餐別金額統計</div>
+  <div id="meal-breakdown"></div>
+
+  <div class="card-title" style="margin-top:16px;">每月花費</div>
+  <div id="monthly-list"><div class="empty"><div class="empty-icon">📅</div>尚無資料</div></div>
+
+  <div class="btn-row" style="margin-top:16px;">
+    <button class="btn btn-export" onclick="exportTxt()">📄 匯出 .txt</button>
+    <button class="btn btn-danger-outline" onclick="showClearModal()">🗑 清除資料</button>
+  </div>
+</div>
+
+<!-- 紀錄頁 -->
+<div class="page" id="page-records">
+  <div class="records-header">
+    <div class="card-title" style="margin:0;">所有紀錄</div>
+    <span id="rec-count-label">0 筆</span>
+  </div>
+  <div id="records-list"></div>
+</div>
+
+<!-- 清除確認 Modal -->
+<div class="modal-bg" id="modal-clear">
+  <div class="modal">
+    <h3>確定清除所有資料？</h3>
+    <p>此動作無法復原，所有記帳紀錄將永久刪除。</p>
+    <div class="modal-btns">
+      <button class="btn btn-outline" onclick="hideClearModal()">取消</button>
+      <button class="btn btn-danger-outline" onclick="clearAll()">確定清除</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const KEY = 'expense_v2';
+let editingId = null;
+
+function load() {
+  try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch(e) { return []; }
+}
+function save(r) { localStorage.setItem(KEY, JSON.stringify(r)); }
+
+function submitForm() {
+  const date = document.getElementById('inp-date').value;
+  const meal = document.getElementById('inp-meal').value;
+  const adults = parseInt(document.getElementById('inp-adults').value) || 0;
+  const kids = parseInt(document.getElementById('inp-kids').value) || 0;
+  const amount = parseFloat(document.getElementById('inp-amount').value) || 0;
+  const note = document.getElementById('inp-note').value.trim();
+
+  if (!date) { alert('請選擇日期'); return; }
+  if (amount <= 0) { alert('請輸入金額'); return; }
+
+  const records = load();
+
+  if (editingId !== null) {
+    const idx = records.findIndex(r => r.id === editingId);
+    if (idx !== -1) records[idx] = { ...records[idx], date, meal, adults, kids, amount, note };
+    save(records);
+    cancelEdit();
+    renderAll();
+    const btn = document.getElementById('submit-btn');
+    btn.textContent = '✓ 已儲存！';
+    btn.style.background = '#1A5276';
+    setTimeout(() => { btn.textContent = '＋ 新增紀錄'; btn.style.background = ''; }, 1200);
+  } else {
+    records.push({ id: Date.now(), date, meal, adults, kids, amount, note });
+    save(records);
+    renderAll();
+    document.getElementById('inp-amount').value = '';
+    document.getElementById('inp-note').value = '';
+    const btn = document.getElementById('submit-btn');
+    btn.textContent = '✓ 已新增！';
+    btn.style.background = '#1D6A3A';
+    setTimeout(() => { btn.textContent = '＋ 新增紀錄'; btn.style.background = ''; }, 1200);
+  }
+}
+
+function startEdit(id) {
+  const r = load().find(r => r.id === id);
+  if (!r) return;
+
+  editingId = id;
+  document.getElementById('inp-date').value = r.date;
+  document.getElementById('inp-meal').value = r.meal;
+  document.getElementById('inp-adults').value = r.adults;
+  document.getElementById('inp-kids').value = r.kids;
+  document.getElementById('inp-amount').value = r.amount;
+  document.getElementById('inp-note').value = r.note || '';
+
+  document.getElementById('edit-banner').classList.add('show');
+  document.getElementById('form-title').textContent = '修改紀錄';
+  const btn = document.getElementById('submit-btn');
+  btn.textContent = '💾 儲存修改';
+  btn.className = 'btn btn-save';
+
+  // 紀錄卡片高亮
+  document.querySelectorAll('.record-card').forEach(c => c.classList.remove('editing'));
+  const card = document.getElementById('rec-' + id);
+  if (card) card.classList.add('editing');
+
+  switchTab('add');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function cancelEdit() {
+  if (editingId) {
+    const card = document.getElementById('rec-' + editingId);
+    if (card) card.classList.remove('editing');
+  }
+  editingId = null;
+  document.getElementById('edit-banner').classList.remove('show');
+  document.getElementById('form-title').textContent = '基本資訊';
+  const btn = document.getElementById('submit-btn');
+  btn.textContent = '＋ 新增紀錄';
+  btn.className = 'btn btn-primary';
+  document.getElementById('inp-date').value = new Date().toISOString().slice(0,10);
+  document.getElementById('inp-meal').value = '午餐';
+  document.getElementById('inp-adults').value = '1';
+  document.getElementById('inp-kids').value = '0';
+  document.getElementById('inp-amount').value = '';
+  document.getElementById('inp-note').value = '';
+}
+
+function deleteRecord(id) {
+  if (!confirm('確定刪除這筆紀錄？')) return;
+  save(load().filter(r => r.id !== id));
+  if (editingId === id) cancelEdit();
+  renderAll();
+}
+
+function renderAll() {
+  const records = load();
+  const total = records.reduce((s, r) => s + r.amount, 0);
+  const avg = records.length ? Math.round(total / records.length) : 0;
+  document.getElementById('stat-total').textContent = '$' + total.toLocaleString();
+  document.getElementById('stat-count').textContent = records.length;
+  document.getElementById('stat-avg').textContent = '$' + avg.toLocaleString();
+  document.getElementById('stat-b').textContent = records.filter(r => r.meal === '早餐').length;
+  document.getElementById('stat-l').textContent = records.filter(r => r.meal === '午餐').length;
+  document.getElementById('stat-d').textContent = records.filter(r => r.meal === '晚餐').length;
+
+  renderMonthly(records);
+  renderMealBreakdown(records);
+
+  document.getElementById('rec-count-label').textContent = records.length + ' 筆';
+  const el = document.getElementById('records-list');
+  if (!records.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📋</div>尚無紀錄<br>到「新增」頁面開始記帳吧！</div>';
+    return;
+  }
+  const sorted = [...records].sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id);
+  el.innerHTML = sorted.map(r => `
+    <div class="record-card${editingId === r.id ? ' editing' : ''}" id="rec-${r.id}">
+      <div class="record-main-row">
+        <div class="record-left">
+          <div class="record-top">
+            <span class="record-date">${r.date}</span>
+            <span class="badge badge-${r.meal}">${r.meal}</span>
+          </div>
+          <div class="record-meta">大人 ${r.adults} 人・小孩 ${r.kids} 人</div>
+          ${r.note ? `<div class="record-note">${r.note}</div>` : ''}
+        </div>
+        <span class="record-amount">$${r.amount.toLocaleString()}</span>
+      </div>
+      <div class="action-btns">
+        <button class="action-btn action-btn-edit" onclick="startEdit(${r.id})">✏️ 修改</button>
+        <button class="action-btn action-btn-del" onclick="deleteRecord(${r.id})">🗑 刪除</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renderMealBreakdown(records) {
+  const el = document.getElementById('meal-breakdown');
+  if (!records.length) { el.innerHTML = ''; return; }
+
+  const meals = ['早餐','午餐','晚餐'];
+  const icons = { '早餐':'☀️', '午餐':'🌤', '晚餐':'🌙' };
+
+  // 依月份分組，算各餐別總金額與筆數
+  const map = {};
+  records.forEach(r => {
+    const ym = r.date.slice(0, 7);
+    if (!map[ym]) map[ym] = { '早餐':{sum:0,n:0}, '午餐':{sum:0,n:0}, '晚餐':{sum:0,n:0} };
+    map[ym][r.meal].sum += r.amount;
+    map[ym][r.meal].n++;
+  });
+
+  const months = Object.keys(map).sort((a, b) => b.localeCompare(a));
+
+  // 全部月份加總平均
+  const allAvg = {};
+  meals.forEach(m => {
+    const totalSum = records.filter(r => r.meal === m).reduce((s,r) => s + r.amount, 0);
+    const totalN = records.filter(r => r.meal === m).length;
+    allAvg[m] = totalN > 0 ? Math.round(totalSum / totalN) : 0;
+  });
+
+  const fmt = v => v > 0 ? '$' + v.toLocaleString() : '—';
+
+  const rows = months.map(ym => {
+    const [y, mo] = ym.split('-');
+    const lbl = y + '/' + mo;
+    return `<div class="mbd-row">
+      <span class="mbd-month">${lbl}</span>
+      ${meals.map(m => {
+        const d = map[ym][m];
+        const avg = d.n > 0 ? Math.round(d.sum / d.n) : 0;
+        return `<span class="mbd-cell${d.n===0?' zero':''}">${d.n > 0 ? '$'+avg.toLocaleString()+'<br><span style="font-size:10px;color:var(--text3)">×'+d.n+'</span>' : '—'}</span>`;
+      }).join('')}
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+  <div class="meal-breakdown-card">
+    <div class="mbd-header">
+      <span>月份</span>
+      ${meals.map(m => `<span>${icons[m]} ${m}</span>`).join('')}
+    </div>
+    ${rows}
+    <div class="mbd-total-row">
+      <span class="mbd-total-lbl">總平均</span>
+      ${meals.map(m => `<span class="mbd-total-cell">${fmt(allAvg[m])}</span>`).join('')}
+    </div>
+  </div>`;
+}
+
+function renderMonthly(records) {
+  const el = document.getElementById('monthly-list');
+  if (!records.length) {
+    el.innerHTML = '<div class="empty"><div class="empty-icon">📅</div>尚無資料</div>';
+    return;
+  }
+
+  // 依月份分組
+  const map = {};
+  records.forEach(r => {
+    const ym = r.date.slice(0, 7);
+    if (!map[ym]) map[ym] = { total: 0, count: 0, b: 0, l: 0, d: 0 };
+    map[ym].total += r.amount;
+    map[ym].count++;
+    if (r.meal === '早餐') map[ym].b++;
+    else if (r.meal === '午餐') map[ym].l++;
+    else map[ym].d++;
+  });
+
+  const months = Object.keys(map).sort((a, b) => b.localeCompare(a));
+  const maxTotal = Math.max(...months.map(m => map[m].total));
+
+  el.innerHTML = months.map((ym, i) => {
+    const d = map[ym];
+    const [y, m] = ym.split('-');
+    const label = y + ' 年 ' + parseInt(m) + ' 月';
+    const pct = maxTotal > 0 ? Math.round((d.total / maxTotal) * 100) : 0;
+    const avg = Math.round(d.total / d.count);
+    const id = 'month-' + ym.replace('-','');
+    return `
+    <div class="month-section">
+      <div class="month-header${i === 0 ? ' open' : ''}" id="hdr-${id}" onclick="toggleMonth('${id}')">
+        <div class="month-left">
+          <span class="month-label">${label}</span>
+          <span class="month-count">${d.count} 筆</span>
+        </div>
+        <div class="month-right">
+          <span class="month-total">$${d.total.toLocaleString()}</span>
+          <span class="month-chevron">▼</span>
+        </div>
+      </div>
+      <div class="month-body${i === 0 ? ' open' : ''}" id="body-${id}">
+        <div class="month-meal-row">
+          <div class="month-meal-cell">
+            <div class="month-meal-icon">☀️</div>
+            <div class="month-meal-num">${d.b}</div>
+            <div class="month-meal-lbl">早餐</div>
+          </div>
+          <div class="month-meal-cell">
+            <div class="month-meal-icon">🌤</div>
+            <div class="month-meal-num">${d.l}</div>
+            <div class="month-meal-lbl">午餐</div>
+          </div>
+          <div class="month-meal-cell">
+            <div class="month-meal-icon">🌙</div>
+            <div class="month-meal-num">${d.d}</div>
+            <div class="month-meal-lbl">晚餐</div>
+          </div>
+        </div>
+        <div class="month-bar-row">
+          <div class="month-bar-label">
+            <span>佔比</span>
+            <span>平均每筆 $${avg.toLocaleString()}</span>
+          </div>
+          <div class="month-bar-track">
+            <div class="month-bar-fill" style="width:${pct}%"></div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleMonth(id) {
+  const hdr = document.getElementById('hdr-' + id);
+  const body = document.getElementById('body-' + id);
+  hdr.classList.toggle('open');
+  body.classList.toggle('open');
+}
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  const idx = ['add','stats','records'].indexOf(tab);
+  document.querySelectorAll('.tab')[idx].classList.add('active');
+  document.getElementById('page-' + tab).classList.add('active');
+}
+
+function showClearModal() { document.getElementById('modal-clear').classList.add('show'); }
+function hideClearModal() { document.getElementById('modal-clear').classList.remove('show'); }
+function clearAll() { localStorage.removeItem(KEY); cancelEdit(); hideClearModal(); renderAll(); }
+
+function exportTxt() {
+  const records = load();
+  if (!records.length) { alert('尚無資料可匯出'); return; }
+  const sorted = [...records].sort((a,b) => a.date.localeCompare(b.date));
+  const total = records.reduce((s,r) => s + r.amount, 0);
+  const avg = Math.round(total / records.length);
+  const header = '日期\t餐別\t大人數\t小孩數\t金額\t備註';
+  const rows = sorted.map(r => [r.date, r.meal, r.adults, r.kids, r.amount, r.note || ''].join('\t'));
+  const summary = [
+    '', '===== 統計摘要 =====',
+    `總金額\t$${total.toLocaleString()}`,
+    `總筆數\t${records.length}`,
+    `平均每筆\t$${avg.toLocaleString()}`,
+    `早餐次數\t${records.filter(r=>r.meal==='早餐').length}`,
+    `午餐次數\t${records.filter(r=>r.meal==='午餐').length}`,
+    `晚餐次數\t${records.filter(r=>r.meal==='晚餐').length}`,
+    `匯出時間\t${new Date().toLocaleString('zh-TW')}`
+  ];
+  const content = [header, ...rows, ...summary].join('\n');
+  const blob = new Blob(['\uFEFF' + content], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = '記帳資料_' + new Date().toISOString().slice(0,10) + '.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById('inp-date').value = new Date().toISOString().slice(0,10);
+renderAll();
+</script>
+</body>
+</html>
